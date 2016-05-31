@@ -1,7 +1,9 @@
 ## STEP1. デプロイ情報
 以下の情報を入力してください。
 - チャットボットをデプロイしたサーバーのURL
+    - [kofearistokrat.com:10010](http://kofearistokrat.com:10010/) 
 - デプロイに使ったサービス: AWS / DigitalOcean / Sakura / Heroku / Cloudn / etc.
+    - Sakura VPS
 
 ## STEP2. 必須機能の実装
 必須機能を実装する上で、創意工夫した点があれば記述してください。

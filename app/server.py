@@ -22,7 +22,7 @@ def httpHandler():
         def server_static(filename):
             return static_file(filename, root='./app')    
 
-        run(host='localhost', port=9000)
+        run(host='0.0.0.0', port=10010)
 
 
 class WebSocketServer(object):
@@ -55,7 +55,7 @@ class WebSocketServer(object):
 if __name__ == '__main__':
     ws_server = WebSocketServer()
     loop = asyncio.get_event_loop()
-    start_server = websockets.serve(ws_server.receive_send, '127.0.0.1', 3000)
+    start_server = websockets.serve(ws_server.receive_send, '0.0.0.0', 3000)
     server = loop.run_until_complete(start_server)
     print('Listen')
 

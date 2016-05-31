@@ -58,7 +58,7 @@ class TodoForBot(object):
         todo_list = []
         for i, todo in enumerate(self.__todo_db.all()):
             tmp_list = []
-            tmp_list.append('todo'+str(i+1))
+            #tmp_list.append('todo'+str(i+1))
             tmp_list.append(todo['todo_name'])
             tmp_list.append(todo['todo_detail'])
             todo_list.append(' '.join(tmp_list))

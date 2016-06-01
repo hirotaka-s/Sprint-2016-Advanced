@@ -2,6 +2,10 @@
 # -*- coding: utf-8 -*-
 
 from tinydb import TinyDB, Query
+import json
+import requests
+import re
+import time
 
 class Bot(object):
     def __init__(self):
@@ -69,10 +73,52 @@ class TodoForBot(object):
             return 'todo empty'
 
 
+class TranslatorForBot(object) :
+    def __init__(self):
+        self.__html_tag_re = re.compile(r'<[^>]*?>')
+        self.__access_token_last_update_time = None
+        secrets_fp = open('secret.json')
+        secrets = json.load(secrets_fp)
+        self.__get_token_payload = {'client_secret': secrets['client_secret'],
+                'client_id': secrets['client_id'],
+                'scope': 'http://api.microsofttranslator.com',
+                'grant_type': 'client_credentials'
+        }
+        secrets_fp.close()
+        self.__access_token = self.__get_access_token()
+
+    def __get_access_token(self):
+        res = requests.post('https://datamarket.accesscontrol.windows.net/v2/OAuth2-13', data=self.__get_token_payload)
+        self.__access_token_last_update_time = time.time()
+        return json.loads(res.text)['access_token']
+
+    def __generate_headers(self):
+        return {'Authorization': 'Bearer ' + self.__access_token}
+
+    def __generate_request_params(self, to, text):
+        return {'to': to, 'text': text, 'oncomplete':'translated'}
+
+    def translate(self, to, text):
+        # if access_token is expired, get new access_token
+        try:
+            if time.time() - self.__access_token_last_update_time > 600:
+                self.__access_token = self.__get_access_token()
+            
+            res = requests.get('https://api.microsofttranslator.com/v2/Http.svc/Translate', params=self.__generate_request_params(to, text), headers=self.__generate_headers())
+
+            if res.status_code != requests.codes.ok:
+                return 'Some error occord! Sorry...'
+
+            return 'Translated: ' + self.__html_tag_re.sub('', res.text)
+        except Exception as e:
+            print(e)
+            return 'Some error occord!'
+        
 
 class BotCommand(object):
     def __init__(self):
         self.__todo = TodoForBot()
+        self.__translator = TranslatorForBot()
 
     def ping(self):
         return 'pong'
@@ -94,3 +140,10 @@ class BotCommand(object):
             print(e)
             return 'arguments for command:' + command_and_data[0] + ' is invalid'
 
+    def translate(self, data):
+        print(data)
+        to_and_text = data.split(' ', 1)
+        to = to_and_text[0]
+        text = to_and_text[1]
+
+        return self.__translator.translate(to, text)

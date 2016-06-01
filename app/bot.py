@@ -183,7 +183,9 @@ class BotCommand(object):
 
         if alias in self.__alias_list.keys():
             delattr(self, alias)
-            return 'bot: Alias ' + self.__alias_list[alias] + ' -> ' + alias + ' is deleted'
+            command = self.__alias_list[alias]
+            del self.__alias_list[alias]
+            return 'bot: Alias ' + command + ' -> ' + alias + ' is deleted'
         return 'bot: Does not exit. No such alias: ' + alias
 
     def aliases(self):

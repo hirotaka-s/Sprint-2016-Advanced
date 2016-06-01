@@ -77,6 +77,7 @@ class TranslatorForBot(object) :
     def __init__(self):
         self.__html_tag_re = re.compile(r'<[^>]*?>')
         self.__access_token_last_update_time = None
+        self.__expires_in = 600
         secrets_fp = open('secret.json')
         secrets = json.load(secrets_fp)
         self.__get_token_payload = {'client_secret': secrets['client_secret'],
@@ -90,7 +91,9 @@ class TranslatorForBot(object) :
     def __get_access_token(self):
         res = requests.post('https://datamarket.accesscontrol.windows.net/v2/OAuth2-13', data=self.__get_token_payload)
         self.__access_token_last_update_time = time.time()
-        return json.loads(res.text)['access_token']
+        res_json = json.loads(res.text)
+        self.__expires_in = int(res_json['expires_in'])
+        return res_json['access_token']
 
     def __generate_headers(self):
         return {'Authorization': 'Bearer ' + self.__access_token}
@@ -101,7 +104,7 @@ class TranslatorForBot(object) :
     def translate(self, to, text):
         # if access_token is expired, get new access_token
         try:
-            if time.time() - self.__access_token_last_update_time > 600:
+            if time.time() - self.__access_token_last_update_time > self.__expires_in:
                 self.__access_token = self.__get_access_token()
             
             res = requests.get('https://api.microsofttranslator.com/v2/Http.svc/Translate', params=self.__generate_request_params(to, text), headers=self.__generate_headers())
@@ -113,6 +116,22 @@ class TranslatorForBot(object) :
         except Exception as e:
             print(e)
             return 'bot: Some error occord!'
+
+class WordCheckerForBot(object):
+    def __init__(self):
+        self.__is_enable = True
+
+    def add(self, word):
+        None
+
+    def delete(self, word):
+        None
+
+    def enable(self):
+        self.__is_enable = True
+
+    def disable(self):
+        self.__is_enable = False
         
 
 class BotCommand(object):
@@ -136,10 +155,10 @@ class BotCommand(object):
             return func(*params)
         except AttributeError as e:
             print(e)
-            return 'bot: No such command: ' + command_and_data[0]
+            return 'bot todo: No such command: ' + command_and_data[0]
         except TypeError as e:
             print(e)
-            return 'bot:Arguments for command: "' + command_and_data[0] + '" is invalid or not require params'
+            return 'bot todo: Arguments for command: "' + command_and_data[0] + '" is invalid or not require params'
 
     def translate(self, data):
         to_and_text = data.split(' ', 1)
@@ -192,3 +211,19 @@ class BotCommand(object):
         alias_list = [k+' -> '+v for k, v in self.__alias_list.items()]
         return '[' + ', '.join(alias_list) + ']'
 
+    def wordcheck(self, data):
+        command_and_data = data.split(' ', 2)
+        
+        try:
+            if command_and_data[0].startswith('_'):
+                raise AttributeError
+            func = getattr(self.__wordchecker, command_and_data[0])
+            # first element is command 
+            params = command_and_data[1:]
+            return func(*params)
+        except AttributeError as e:
+            print(e)
+            return 'bot wordcheck: No such command: ' + command_and_data[0]
+        except TypeError as e:
+            print(e)
+            return 'bot wordcheck: Arguments for command: "' + command_and_data[0] + '" is invalid or not require params'

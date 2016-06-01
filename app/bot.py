@@ -107,12 +107,12 @@ class TranslatorForBot(object) :
             res = requests.get('https://api.microsofttranslator.com/v2/Http.svc/Translate', params=self.__generate_request_params(to, text), headers=self.__generate_headers())
 
             if res.status_code != requests.codes.ok:
-                return 'Some error occord! Sorry...'
+                return 'bot: invlid request! Check your params.'
 
-            return 'Translated: ' + self.__html_tag_re.sub('', res.text)
+            return 'bot: ' + self.__html_tag_re.sub('', res.text)
         except Exception as e:
             print(e)
-            return 'Some error occord!'
+            return 'bot: Some error occord!'
         
 
 class BotCommand(object):
@@ -138,12 +138,17 @@ class BotCommand(object):
             return 'no such command: ' + command_and_data[0]
         except TypeError as e:
             print(e)
-            return 'arguments for command:' + command_and_data[0] + ' is invalid'
+            return 'arguments for command: "' + command_and_data[0] + '" is invalid or not require params'
 
     def translate(self, data):
-        print(data)
         to_and_text = data.split(' ', 1)
         to = to_and_text[0]
         text = to_and_text[1]
 
         return self.__translator.translate(to, text)
+
+    def clap(self):
+        return 'bot: \U0001F44F'
+
+    def thanks(self):
+        return 'bot: You are welcome :)'

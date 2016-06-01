@@ -30,10 +30,10 @@ class Bot(object):
             return func(*params)
         except AttributeError as e:
             print(e)
-            return 'no such command: ' + split_message[1]
+            return 'No such command: ' + split_message[1]
         except TypeError as e:
             print(e)
-            return 'arguments for command:' + split_message[1] + ' is invalid'
+            return 'Arguments for command:' + split_message[1] + ' is invalid'
 
 
 class TodoForBot(object):
@@ -107,7 +107,7 @@ class TranslatorForBot(object) :
             res = requests.get('https://api.microsofttranslator.com/v2/Http.svc/Translate', params=self.__generate_request_params(to, text), headers=self.__generate_headers())
 
             if res.status_code != requests.codes.ok:
-                return 'bot: invlid request! Check your params.'
+                return 'bot: Invlid request! Check your params.'
 
             return 'bot: ' + self.__html_tag_re.sub('', res.text)
         except Exception as e:
@@ -119,6 +119,7 @@ class BotCommand(object):
     def __init__(self):
         self.__todo = TodoForBot()
         self.__translator = TranslatorForBot()
+        self.__alias_list = {}
 
     def ping(self):
         return 'pong'
@@ -135,10 +136,10 @@ class BotCommand(object):
             return func(*params)
         except AttributeError as e:
             print(e)
-            return 'no such command: ' + command_and_data[0]
+            return 'bot: No such command: ' + command_and_data[0]
         except TypeError as e:
             print(e)
-            return 'arguments for command: "' + command_and_data[0] + '" is invalid or not require params'
+            return 'bot:Arguments for command: "' + command_and_data[0] + '" is invalid or not require params'
 
     def translate(self, data):
         to_and_text = data.split(' ', 1)
@@ -152,3 +153,40 @@ class BotCommand(object):
 
     def thanks(self):
         return 'bot: You are welcome :)'
+
+    def alias(self, data):
+        command_and_alias = data.split(' ', 1)
+        command = command_and_alias[0]
+        alias = command_and_alias[1]
+
+        try:
+            if alias in self.__alias_list.keys():
+                return 'bot: Alias:' + alias + ' is already exist.'
+            func = getattr(self, alias)
+            return 'bot: Already exist command:' + alias + ' is not using as alias.'
+        except AttributeError as e:
+            None
+
+        try:
+            if command.startswith('_'):
+                raise AttributeError
+            func = getattr(self, command)
+            setattr(self, alias, func)
+
+            self.__alias_list[alias] = command
+            return 'bot: Set alias ' + command + ' -> ' + alias
+        except AttributeError as e:
+            return 'bot: No such command: ' + command_and_data[0]
+
+    def unalias(self, data):
+        alias = data
+
+        if alias in self.__alias_list.keys():
+            delattr(self, alias)
+            return 'bot: Alias ' + self.__alias_list[alias] + ' -> ' + alias + ' is deleted'
+        return 'bot: Does not exit. No such alias: ' + alias
+
+    def aliases(self):
+        alias_list = [k+' -> '+v for k, v in self.__alias_list.items()]
+        return '[' + ', '.join(alias_list) + ']'
+

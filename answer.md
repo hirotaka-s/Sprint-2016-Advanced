@@ -37,8 +37,10 @@
 - `bot clap` : チャットボットが拍手してくれるだけのコマンド
 - `bot thanks`: チャットボットを労うコマンド
 - `bot alias [command_name] [alias_name]` : `command_name`を`alias_name`としてaliasを登録
+    - aliasを設定可能なコマンドは`ping`,`todo`,`translate`,`clap`,`thanks`,`alias`,`unalias`,`aliases`,`wordchecker`
 - `bot unalias [alias_name]` : `alias_name`のaliasを削除
 - `bot aliases` : 全ユーザによって登録されたaliasの一覧
+- `bot wordchecker [command] [param]`: 設定したワードを検閲により削除するコマンド
 
 ## その他創意工夫点、アピールポイントなど
 レビューワーをうならせる創意工夫やアピールポイントがあればこちらに記載してください。

@@ -39,7 +39,8 @@ class WebSocketServer(object):
             print("Receiving ...")
             while True:
                 message = yield from websocket.recv()
-                send_message_json = {'data': message}
+                checked_message = self.__bot.command('bot wordchecker wordcheck ' + message)
+                send_message_json = {'data': checked_message}
                 yield from asyncio.wait([ws.send(json.dumps(send_message_json)) for ws in self.__connected])
                 if self.__bot.is_bot_command(message):
                     send_data = self.__bot.command(message)

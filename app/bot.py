@@ -89,11 +89,14 @@ class TranslatorForBot(object) :
         self.__access_token = self.__get_access_token()
 
     def __get_access_token(self):
-        res = requests.post('https://datamarket.accesscontrol.windows.net/v2/OAuth2-13', data=self.__get_token_payload)
-        self.__access_token_last_update_time = time.time()
-        res_json = json.loads(res.text)
-        self.__expires_in = int(res_json['expires_in'])
-        return res_json['access_token']
+        try:
+            res = requests.post('https://datamarket.accesscontrol.windows.net/v2/OAuth2-13', data=self.__get_token_payload)
+            self.__access_token_last_update_time = time.time()
+            res_json = json.loads(res.text)
+            self.__expires_in = int(res_json['expires_in'])
+            return res_json['access_token']
+        except Exception as e:
+            raise e
 
     def __generate_headers(self):
         return {'Authorization': 'Bearer ' + self.__access_token}
@@ -120,25 +123,119 @@ class TranslatorForBot(object) :
 class WordCheckerForBot(object):
     def __init__(self):
         self.__is_enable = True
+        self.__dict_db = TinyDB('dict_for_bot_db.json')
+        self.__query = Query()
+
+    def wordcheck(self, text):
+        if self.__is_enable:
+            for word in self.__dict_db.all():
+                text = text.replace(word['bad_word'], ' [検閲により削除] ') 
+
+        return text
+        
 
     def add(self, word):
-        None
+        try:
+            if self.__dict_db.search(self.__query.bad_word == word):
+                return 'bot wordchecker: The word is already added'
+            self.__dict_db.insert({'bad_word' : word})
+            return 'bot wordchecker: Add word: ' + word
+        except Exception as e:
+            return 'bot wordchecker: Add failed'
+
 
     def delete(self, word):
-        None
+        try:
+            if self.__dict_db.remove(self.__query.bad_word == word):
+                return 'bot wordchecker: word deleted'
+            else:
+                return 'bot wordchecker: Word delete faild. no such word: ' + todo_name
+        except Exception as e:
+            return 'bot wordchecker: Delete failed'
+
+    def is_enable(self):
+        if self.__is_enable:
+            return 'bot wordchecker: Enabled'
+        else:
+            return 'bot wordchecker: Disabled'
 
     def enable(self):
-        self.__is_enable = True
+        if self.__is_enable:
+            return 'bot wordchecker: Already enabled'
+        else:
+            self.__is_enable = True
+            return 'bot wordchecker: Enabled'
 
     def disable(self):
-        self.__is_enable = False
+        if self.__is_enable:
+            self.__is_enable = False
+            return 'bot wordchecker: Disabled'
+        else:
+            return 'bot wordchecker: Already disabled'
+
+    def list(self):
+        word_list = []
+        for word in self.__dict_db.all():
+            word_list.append(word['bad_word'])
+
+        if word_list:
+            return '[ ' + ', '.join(word_list) + ' ]'
+        else:
+            return 'bot wordchecker: Dictionary is empty'
+
+
+class AliasForBot(object):
+    def __init__(self, bot_command):
+        self.__alias_db = TinyDB('alias_for_bot_db.json')
+        self.__query = Query()
+        self.__bot_command = bot_command
+        [self.__register_function(a['command_name'], a['alias_name']) for a in self.__alias_db.all()]
+
+    def __register_function(self, command_name, alias_name):
+        func = getattr(self.__bot_command, command_name)
+        setattr(self.__bot_command, alias_name, func)
+
+    def alias(self, command_name, alias_name):
+        try:
+            if self.__alias_db.search(self.__query.alias_name == alias_name):
+                return 'bot alias: Alias:' + alias_name + ' is already exist.'
+            func = getattr(self.__bot_command, alias_name)
+            return 'bot alias: Already exist command:' + alias_name + ' is not using as alias.'
+        except AttributeError as e:
+            None
+
+        try:
+            if command_name.startswith('_'):
+                raise AttributeError
+            self.__register_function(command_name, alias_name)
+
+            self.__alias_db.insert({'command_name' : command_name, 'alias_name' : alias_name})
+            return 'bot alias: Set alias ' + command_name + ' -> ' + alias_name
+        except AttributeError as e:
+            return 'bot alias: No such command: ' + command_name
+
+    def unalias(self, alias_name):
+        remove_alias = self.__alias_db.search(self.__query.alias_name == alias_name)[0]
+
+        if remove_alias:
+            delattr(self.__bot_command, alias_name)
+            command_name = remove_alias['command_name']
+            self.__alias_db.remove(self.__query.alias_name == alias_name)
+            return 'bot unalias: Alias ' + command_name + ' -> ' + alias_name + ' is deleted'
+        return 'bot unalias: Does not exit. No such alias: ' + alias_name
+
+    def aliases(self):
+        alias_list = [a['command_name']+' -> '+a['alias_name'] for a in self.__alias_db.all()]
+        return '[' + ', '.join(alias_list) + ']'
         
 
 class BotCommand(object):
     def __init__(self):
         self.__todo = TodoForBot()
         self.__translator = TranslatorForBot()
-        self.__alias_list = {}
+        #self.__alias_list = {}
+        self.__alias = AliasForBot(self)
+        self.__wordchecker = WordCheckerForBot()
 
     def ping(self):
         return 'pong'
@@ -162,6 +259,9 @@ class BotCommand(object):
 
     def translate(self, data):
         to_and_text = data.split(' ', 1)
+        if len(to_and_text) < 2:
+            return 'bot tnraslate: Invalid param. bot translate [lang] [text]'
+            
         to = to_and_text[0]
         text = to_and_text[1]
 
@@ -175,44 +275,20 @@ class BotCommand(object):
 
     def alias(self, data):
         command_and_alias = data.split(' ', 1)
+        if len(command_and_alias) < 2:
+            return 'bot alias: Invalid param. bot alias [command_name] [alias_name]'
         command = command_and_alias[0]
         alias = command_and_alias[1]
-
-        try:
-            if alias in self.__alias_list.keys():
-                return 'bot: Alias:' + alias + ' is already exist.'
-            func = getattr(self, alias)
-            return 'bot: Already exist command:' + alias + ' is not using as alias.'
-        except AttributeError as e:
-            None
-
-        try:
-            if command.startswith('_'):
-                raise AttributeError
-            func = getattr(self, command)
-            setattr(self, alias, func)
-
-            self.__alias_list[alias] = command
-            return 'bot: Set alias ' + command + ' -> ' + alias
-        except AttributeError as e:
-            return 'bot: No such command: ' + command_and_data[0]
+        return self.__alias.alias(command, alias)
 
     def unalias(self, data):
-        alias = data
-
-        if alias in self.__alias_list.keys():
-            delattr(self, alias)
-            command = self.__alias_list[alias]
-            del self.__alias_list[alias]
-            return 'bot: Alias ' + command + ' -> ' + alias + ' is deleted'
-        return 'bot: Does not exit. No such alias: ' + alias
+        return self.__alias.unalias(data)
 
     def aliases(self):
-        alias_list = [k+' -> '+v for k, v in self.__alias_list.items()]
-        return '[' + ', '.join(alias_list) + ']'
+        return self.__alias.aliases()
 
-    def wordcheck(self, data):
-        command_and_data = data.split(' ', 2)
+    def wordchecker(self, data):
+        command_and_data = data.split(' ', 1)
         
         try:
             if command_and_data[0].startswith('_'):
@@ -223,7 +299,7 @@ class BotCommand(object):
             return func(*params)
         except AttributeError as e:
             print(e)
-            return 'bot wordcheck: No such command: ' + command_and_data[0]
+            return 'bot wordchecker: No such command: ' + command_and_data[0]
         except TypeError as e:
             print(e)
-            return 'bot wordcheck: Arguments for command: "' + command_and_data[0] + '" is invalid or not require params'
+            return 'bot wordchecker: Arguments for command: "' + command_and_data[0] + '" is invalid or not require params'

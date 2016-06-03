@@ -29,10 +29,8 @@ class Bot(object):
             params = split_message[2:]
             return func(*params)
         except AttributeError as e:
-            print(e)
             return 'No such command: ' + split_message[1]
         except TypeError as e:
-            print(e)
             return 'Arguments for command:' + split_message[1] + ' is invalid'
 
 
@@ -199,6 +197,8 @@ class AliasForBot(object):
         try:
             if self.__alias_db.search(self.__query.alias_name == alias_name):
                 return 'bot alias: Alias:' + alias_name + ' is already exist.'
+            if self.__alias_db.search(self.__query.alias_name == command_name):
+                return 'bot alias: '+ command_name + ' is alias. Not regist alias.'
             func = getattr(self.__bot_command, alias_name)
             return 'bot alias: Already exist command:' + alias_name + ' is not using as alias.'
         except AttributeError as e:
@@ -233,7 +233,6 @@ class BotCommand(object):
     def __init__(self):
         self.__todo = TodoForBot()
         self.__translator = TranslatorForBot()
-        #self.__alias_list = {}
         self.__alias = AliasForBot(self)
         self.__wordchecker = WordCheckerForBot()
 
@@ -251,10 +250,8 @@ class BotCommand(object):
             params = command_and_data[1:]
             return func(*params)
         except AttributeError as e:
-            print(e)
             return 'bot todo: No such command: ' + command_and_data[0]
         except TypeError as e:
-            print(e)
             return 'bot todo: Arguments for command: "' + command_and_data[0] + '" is invalid or not require params'
 
     def translate(self, data):
@@ -298,8 +295,6 @@ class BotCommand(object):
             params = command_and_data[1:]
             return func(*params)
         except AttributeError as e:
-            print(e)
             return 'bot wordchecker: No such command: ' + command_and_data[0]
         except TypeError as e:
-            print(e)
             return 'bot wordchecker: Arguments for command: "' + command_and_data[0] + '" is invalid or not require params'

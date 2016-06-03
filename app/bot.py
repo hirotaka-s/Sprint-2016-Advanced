@@ -192,6 +192,7 @@ class AliasForBot(object):
     def __register_function(self, command_name, alias_name):
         func = getattr(self.__bot_command, command_name)
         setattr(self.__bot_command, alias_name, func)
+        return True
 
     def alias(self, command_name, alias_name):
         try:
@@ -207,21 +208,20 @@ class AliasForBot(object):
         try:
             if command_name.startswith('_'):
                 raise AttributeError
-            self.__register_function(command_name, alias_name)
-
-            self.__alias_db.insert({'command_name' : command_name, 'alias_name' : alias_name})
-            return 'bot alias: Set alias ' + command_name + ' -> ' + alias_name
+            if self.__register_function(command_name, alias_name):
+                self.__alias_db.insert({'command_name' : command_name, 'alias_name' : alias_name})
+                return 'bot alias: Set alias ' + command_name + ' -> ' + alias_name
         except AttributeError as e:
             return 'bot alias: No such command: ' + command_name
 
     def unalias(self, alias_name):
-        remove_alias = self.__alias_db.search(self.__query.alias_name == alias_name)[0]
-
-        if remove_alias:
-            delattr(self.__bot_command, alias_name)
-            command_name = remove_alias['command_name']
-            self.__alias_db.remove(self.__query.alias_name == alias_name)
-            return 'bot unalias: Alias ' + command_name + ' -> ' + alias_name + ' is deleted'
+        if self.__alias_db.search(self.__query.alias_name == alias_name):
+            remove_alias = self.__alias_db.search(self.__query.alias_name == alias_name)[0]
+            if remove_alias:
+                delattr(self.__bot_command, alias_name)
+                command_name = remove_alias['command_name']
+                self.__alias_db.remove(self.__query.alias_name == alias_name)
+                return 'bot unalias: Alias ' + command_name + ' -> ' + alias_name + ' is deleted'
         return 'bot unalias: Does not exit. No such alias: ' + alias_name
 
     def aliases(self):

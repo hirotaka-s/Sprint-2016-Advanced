@@ -8,6 +8,7 @@ import websockets
 
 from bot import Bot
 import json
+import logging
 
 #serving index.html file on "http://localhost:9000"
 def httpHandler():
@@ -22,13 +23,23 @@ def httpHandler():
         def server_static(filename):
             return static_file(filename, root='./app')    
 
-        run(host='0.0.0.0', port=10010)
+        run(host='127.0.0.1', port=10010)
 
 
 class WebSocketServer(object):
     def __init__(self):
         self.__bot = Bot()
         self.__connected = set()
+        self.__message_logger = logging.getLogger(__name__)
+        formatter = logging.Formatter(fmt='%(asctime)s %(message)s')
+        self.__file_handler = logging.FileHandler('chat_message.log')
+        self.__file_handler.setLevel(logging.DEBUG)
+        self.__file_handler.setFormatter(formatter)
+        self.__message_logger.addHandler(self.__file_handler)
+        self.__message_logger.debug('Logging Start')
+    
+    def __del__(self):
+        self.__message_logger.removeHandler(self.__file_handler)
 
     @asyncio.coroutine
     def receive_send(self, websocket, path):
@@ -40,10 +51,12 @@ class WebSocketServer(object):
             while True:
                 message = yield from websocket.recv()
                 checked_message = self.__bot.command('bot wordchecker wordcheck ' + message)
+                self.__message_logger.info(checked_message)
                 send_message_json = {'data': checked_message}
                 yield from asyncio.wait([ws.send(json.dumps(send_message_json)) for ws in self.__connected])
                 if self.__bot.is_bot_command(message):
                     send_data = self.__bot.command(message)
+                    self.__message_logger.info(send_data)
                     send_message_json = {'data' : send_data}
                     yield from asyncio.wait([ws.send(json.dumps(send_message_json)) for ws in self.__connected])
         except websockets.exceptions.ConnectionClosed as e:

@@ -1,4 +1,8 @@
 node_modules/
 *.swp
-todo_for_botdb.json
+todo_for_bot_db.json
+alias_for_bot_db.json
+dict_for_bot_db.json
+chat_message.log
 secret.json
+app/__pycache__/
